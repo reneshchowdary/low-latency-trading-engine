@@ -37,6 +37,8 @@ try:
             assert b"submitted=2" in b.recv(4096)
             b.sendall(b"ORDER 102 BUY LIMIT -1 1\n")
             assert b"ERROR" in b.recv(4096)
+            b.sendall(b"ORDER 103 BUY LIMIT 1000000001 1\\n")
+            assert b"REJECTED risk-limit" in b.recv(4096)
     print("TCP end-to-end integration passed")
 finally:
     server.terminate()
