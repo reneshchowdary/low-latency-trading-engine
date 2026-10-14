@@ -39,6 +39,3 @@ A single thread owns the book. Bids use descending ordered price levels, asks us
 4. Nonblocking framed TCP gateway and backpressure
 5. Risk checks, journal/replay, profiling and reproducible latency measurements
 
-## Reference
-
-Inspired by general limit-order-book concepts explored in [Anubhaw6557/trading](https://github.com/Anubhaw6557/trading). This is an independently written implementation, not a copy of that repository's source.
