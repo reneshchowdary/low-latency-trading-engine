@@ -27,3 +27,8 @@ add_test(NAME order_book_tests COMMAND order_book_tests)
 add_executable(protocol_queue_tests tests/protocol_queue_tests.cpp)
 target_link_libraries(protocol_queue_tests PRIVATE trading_engine Threads::Threads)
 add_test(NAME protocol_queue_tests COMMAND protocol_queue_tests)
+
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if(Python3_Interpreter_FOUND AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_test(NAME tcp_integration COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/tcp_integration.py $<TARGET_FILE:trading_gateway>)
+endif()
