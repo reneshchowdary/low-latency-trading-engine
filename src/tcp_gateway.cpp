@@ -32,7 +32,7 @@ std::string handle(std::string_view line, trading::OrderBook& book,
     switch (command->kind) {
         case trading::Command::Kind::Submit: {
             ++submitted;
-            if (!risk.validate(command->order)) return "REJECTED risk-limit\\n";
+            if (!risk.validate(command->order)) return "REJECTED risk-limit\n";
             auto result = book.submit(command->order);
             fills += result.fills.size();
             return trading::format_result(result);
