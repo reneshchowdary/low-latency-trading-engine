@@ -1,41 +1,86 @@
-# Low-Latency Trading Engine (C++20)
+# Low-Latency Trading Engine — C++20 / Linux
 
-An independently implemented educational matching engine for Linux systems and performance engineering.
+An independent, runnable **real-time exchange gateway and order matching simulator**. This repository is a systems-engineering portfolio project, not a live exchange or financial service.
 
-## Milestone 1: matching core
+## Implemented
 
-Implemented: limit and market orders, FIFO price-time priority, execution at the resting order's price, partial fills, cancellation, integer-tick prices, duplicate order-ID rejection, unit tests, and a simple throughput benchmark.
+- Single-writer limit-order book with price-time FIFO priority
+- Limit/market orders, partial fills, cancellation, duplicate ID rejection
+- Trades execute at the **resting** order's price
+- Linux nonblocking TCP gateway with poll, partial-read framing and bounded per-client buffers
+- Multiple simultaneous clients, explicit invalid-command errors and connection cleanup
+- C++20 SPSC bounded ring queue using acquire/release atomics (tested independently; **not yet wired into the TCP matching path**)
+- Unit tests, multithreaded queue test, TCP integration test, CTest and GCC/Clang CI
+- Synthetic throughput benchmark (single-threaded; not end-to-end)
 
-**Not yet implemented:** TCP networking, lock-free queues, memory pools, risk management, journaling, replay, or p99 latency measurement. No claim of superior performance has been established.
+## Build and test (Linux)
 
-## Build and test
-
-```sh
+```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build -j
 ctest --test-dir build --output-on-failure
-./build/trading_demo
 ```
+
+## Run a real TCP trading session
+
+Terminal 1:
+
+```bash
+./build/trading_gateway 9000
+```
+
+Terminal 2:
+
+```bash
+nc 127.0.0.1 9000
+ORDER 1 SELL LIMIT 10100 50
+ORDER 2 BUY LIMIT 10200 20
+TOP
+STATS
+CANCEL 1
+```
+
+Commands use newline-delimited ASCII. Prices are **integer ticks** and quantities are positive integers.
+
+- `ORDER <id> BUY|SELL LIMIT|MARKET <price_ticks> <quantity>`
+- `CANCEL <id>`
+- `TOP`
+- `STATS`
+- `QUIT` (returns BYE; session may remain open)
+
+The gateway binds to `127.0.0.1` by default. It is for local demonstration, **not** deployment on an untrusted network.
 
 ## Benchmark
 
-```sh
+```bash
 cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release
 cmake --build build-release -j
 ./build-release/matching_benchmark 1000000
 ```
 
-The benchmark measures only a synthetic single-threaded crossing workload, **not** real-world network-to-execution latency. It must not be compared directly to third-party benchmarks without equivalent workloads and hardware.
+This benchmark uses a synthetic single-threaded crossing workload. It does **not** establish p99 latency, production throughput, or superiority over any other implementation. For meaningful comparisons, record CPU, compiler, optimization flags, workload and test conditions.
 
 ## Architecture
 
-A single thread owns the book. Bids use descending ordered price levels, asks use ascending ordered levels, and linked FIFO queues preserve priority within a level. An order-ID index supports cancellation. The initial implementation uses standard containers to make correctness straightforward; it is not allocation-free.
+```text
+TCP clients
+    |
+nonblocking poll gateway (framed ASCII protocol)
+    |
+single-writer OrderBook
+    |-- ordered bid/ask price levels
+    |-- FIFO resting orders
+    |-- order ID lookup / cancellation
+    |
+execution responses / top-of-book / statistics
 
-## Roadmap
+SPSC ring queue: independently implemented and tested; future threaded pipeline
+```
 
-1. More comprehensive deterministic and randomized correctness tests
-2. Fixed-capacity pools and alternative cache-efficient order-book representations
-3. Bounded queues, sequencer and thread lifecycle management
-4. Nonblocking framed TCP gateway and backpressure
-5. Risk checks, journal/replay, profiling and reproducible latency measurements
+## Engineering limitations and next steps
 
+This is an **end-to-end runnable prototype**, not a production-ready low-latency exchange. Current matching uses `std::map`, `std::list`, and dynamic allocations. The gateway and matcher run in the same event loop; a slow client is bounded but the design has no durable order journal. The gateway is not authenticated or encrypted, and no real-money orders should be sent to it.
+
+Future engineering work: reference-model/property tests, fixed-capacity pools, sequenced queue pipeline, pre-trade risk limits, journaling and deterministic replay, latency histograms and controlled performance tuning.
+
+The implementation and documentation should be evaluated on demonstrable behavior and reproducible measurements, not unverified speed claims.
