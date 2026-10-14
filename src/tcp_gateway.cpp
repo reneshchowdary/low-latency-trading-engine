@@ -1,5 +1,6 @@
 #include "trading/order_book.hpp"
 #include "trading/protocol.hpp"
+#include "trading/risk.hpp"
 #include <arpa/inet.h>
 #include <cerrno>
 #include <csignal>
@@ -25,12 +26,13 @@ bool nonblocking(int fd) {
     return flags >= 0 && fcntl(fd, F_SETFL, flags | O_NONBLOCK) == 0;
 }
 std::string handle(std::string_view line, trading::OrderBook& book,
-                   std::uint64_t& submitted, std::uint64_t& fills) {
+                   std::uint64_t& submitted, std::uint64_t& fills, const trading::RiskValidator& risk) {
     const auto command = trading::parse_command(line);
     if (!command) return "ERROR invalid-command\n";
     switch (command->kind) {
         case trading::Command::Kind::Submit: {
             ++submitted;
+            if (!risk.validate(command->order)) return "REJECTED risk-limit\\n";
             auto result = book.submit(command->order);
             fills += result.fills.size();
             return trading::format_result(result);
@@ -69,6 +71,7 @@ int main(int argc, char** argv) {
         listen(listener, 128) != 0) { std::perror("bind/listen"); close(listener); return 1; }
     std::cout << "trading gateway listening on 127.0.0.1:" << port << std::endl;
     trading::OrderBook book;
+    const trading::RiskValidator risk;
     std::map<int, Client> clients;
     std::uint64_t submitted = 0, fills = 0;
     for (;;) {
@@ -111,7 +114,7 @@ int main(int argc, char** argv) {
                         client.input.erase(0, newline + 1);
                         if (line.size() > max_line) { disconnect = true; break; }
                         if (!line.empty() && line.back() == '\r') line.pop_back();
-                        client.output += handle(line, book, submitted, fills);
+                        client.output += handle(line, book, submitted, fills, risk);
                         if (client.output.size() > max_output) { disconnect = true; break; }
                     }
                     if (disconnect || client.input.size() > max_line) { disconnect = true; break; }
