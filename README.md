@@ -10,6 +10,7 @@ An independent, runnable **real-time exchange gateway and order matching simulat
 - Linux nonblocking TCP gateway with poll, partial-read framing and bounded per-client buffers
 - Multiple simultaneous clients, explicit invalid-command errors and connection cleanup
 - C++20 SPSC bounded ring queue using acquire/release atomics (tested independently; **not yet wired into the TCP matching path**)
+- Stateless pre-trade validation of maximum order size, limit price and limit-order notional (market-order notional requires further implementation)
 - Unit tests, multithreaded queue test, TCP integration test, CTest and GCC/Clang CI
 - Synthetic throughput benchmark (single-threaded; not end-to-end)
 
@@ -81,6 +82,6 @@ SPSC ring queue: independently implemented and tested; future threaded pipeline
 
 This is an **end-to-end runnable prototype**, not a production-ready low-latency exchange. Current matching uses `std::map`, `std::list`, and dynamic allocations. The gateway and matcher run in the same event loop; a slow client is bounded but the design has no durable order journal. The gateway is not authenticated or encrypted, and no real-money orders should be sent to it.
 
-Future engineering work: reference-model/property tests, fixed-capacity pools, sequenced queue pipeline, pre-trade risk limits, journaling and deterministic replay, latency histograms and controlled performance tuning.
+Future engineering work: reference-model/property tests, fixed-capacity pools, sequenced queue pipeline, book-aware market-order risk, journaling and deterministic replay, latency histograms and controlled performance tuning.
 
 The implementation and documentation should be evaluated on demonstrable behavior and reproducible measurements, not unverified speed claims.
