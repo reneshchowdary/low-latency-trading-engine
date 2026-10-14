@@ -32,3 +32,7 @@ find_package(Python3 COMPONENTS Interpreter QUIET)
 if(Python3_Interpreter_FOUND AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_test(NAME tcp_integration COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/tcp_integration.py $<TARGET_FILE:trading_gateway>)
 endif()
+
+add_executable(risk_tests tests/risk_tests.cpp)
+target_link_libraries(risk_tests PRIVATE trading_engine)
+add_test(NAME risk_tests COMMAND risk_tests)
